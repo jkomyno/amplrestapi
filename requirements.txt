@@ -1,0 +1,5 @@
+aiohttp==3.5.4
+amplpy==0.6.7
+asyncio==3.4.3
+confuse==1.0.0
+jsonschema==3.0.2
