@@ -1,0 +1,9 @@
+# Project version
+version: 0.1.0
+
+app:
+  # IP of the server
+  host: 0.0.0.0
+
+  # Port exposed by the REST server
+  port: 9001
