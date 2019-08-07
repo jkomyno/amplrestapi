@@ -1,0 +1,10 @@
+version: '3.5'
+
+services:
+  amplrestapi:
+    hostname: amplrestapi
+    container_name: amplrestapi
+    build:
+      context: .
+    ports:
+      - 9001:9001
