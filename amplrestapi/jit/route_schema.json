@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+
+  "definitions": {
+    "integer_items_0_1000": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1000
+    },
+    "duration": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "items": {
+        "$ref": "#/definitions/integer_items_0_1000"
+      }
+    },
+    "expected_finish": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "items": {
+        "type": "string",
+        "format": "date-time"
+      }
+    },
+    "wrong_time_fee": {
+      "type": "integer"
+    }
+  },
+
+  "type": "object",
+
+  "properties": {
+    "duration": { "$ref": "#/definitions/duration" },
+    "expected_finish": { "$ref": "#/definitions/expected_finish" },
+    "fee": { "$ref": "#/definitions/wrong_time_fee" },
+    "n_batches": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100
+    }
+  },
+
+  "required": [
+    "duration",
+    "expected_finish",
+    "wrong_time_fee",
+    "n_batches"
+  ]
+}
