@@ -1,0 +1,239 @@
+openapi: 3.0.0
+info:
+  # arbitrary string that specifies the version of the API
+  version: 0.1.0
+
+  # API name
+  title: AMPLRESTAPI
+
+  # Extended information about the API
+  description: |
+    AMPLRESTAPI is a custom asynchronous REST API layer written in modern Python to solve optimization problems in AMPL.
+    At the moment, there's a single problem available, the "Just In Time Computation" problem (JIT).
+
+  contact:
+    name: Alberto Schiabel
+    email: alberto.schiabel@gmail.com
+
+# API server and base URL
+servers:
+  - url: http://0.0.0.0:9001
+    description: Local AMPL REST server
+
+# tags are used for organizing operations
+tags:
+  - name: PROBLEMS
+    description: |
+      Operations that concern optimization problems
+
+# paths define the API exposed endpoints
+paths:
+  '/problems/jit':
+    post:
+      operationId: solvejitproblem
+      summary: Attempts to solve the JIT problem instance with the provided JSON input.
+      description: |
+        This operation attempts to solve the JIT problem.
+        The input data must be provided in JSON format.
+        The input should be made of the decisional variables, the fixed malus cost
+        and the number of programs to be computed one-at-a-time.
+      tags: [ 'PROBLEMS' ]
+      requestBody:
+        description: Problem decisional variables, fixed malus cost, number of batches
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JITInput'
+      responses:
+        '200':
+          description: OK, return the results and some info about how AMPL and CPLEX solved the problem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JITOutput'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+
+        '422':
+          $ref: '#/components/responses/UnprocessableEntityError'
+
+components:
+  schemas:
+    # General problem meta
+    ProblemMeta:
+      type: object
+      properties:
+        iterations:
+          type: integer
+          description: number of dual simplex iterations taken by AMPL and CPLEX to compute the solution to the problem
+          example: 5
+        computation_duration:
+          type: number
+          format: float
+          description: amount of seconds needed to compute the solution
+          example: 0.016966819763183594
+      required:
+        - iterations
+        - computation_duration
+
+    # JIT problem input
+
+    JITDuration:
+      type: integer
+      description: Fixed duration in minutes of a program to be computed by the server
+      example: 5
+
+    JITDurationArray:
+      type: array
+      items:
+        $ref: '#/components/schemas/JITDuration'
+      example: [180, 360, 400, 90]
+
+    JITExpectedFinish:
+      type: string
+      format: datetime
+      description: Exact date and time in which the program computation is expected to finish
+      example: '2019-08-22 17:01'
+
+    JITExpectedFinishArray:
+      type: array
+      items:
+        $ref: '#/components/schemas/JITExpectedFinish'
+      example: ['2019-08-22 17:01', '2019-08-22 22:55', '2019-08-23 09:35', '2019-08-23 18:00']
+
+    JITWrongTimeFee:
+      type: integer
+      description: Fixed cost (in dollars) that must be payed for each minute of early or delayed computations
+      example: 750
+
+    JITNumberOfBatches:
+      type: integer
+      description: |
+        Number of programs to be processed by the server.
+        This parameter is used to validate the length of the array of durations and expected finish datetimes.
+      example: 4
+
+    JITInput:
+      type: object
+      description: Input data for the JIT problem
+      properties:
+        duration:
+          $ref: '#/components/schemas/JITDurationArray'
+        expected_finish:
+          $ref: '#/components/schemas/JITExpectedFinishArray'
+        wrong_time_fee:
+          $ref: '#/components/schemas/JITWrongTimeFee'
+        n_batches:
+          $ref: '#/components/schemas/JITNumberOfBatches'
+      required:
+        - duration
+        - expected_finish
+        - wrong_time_fee
+        - n_batches
+
+    # JIT problem output
+
+    JITTotalFee:
+      type: integer
+      description: Amount of dollars to pay due to computations finished either early or too late
+      example: 4500
+
+    JITStartDatetime:
+      type: string
+      format: datetime
+      description: Date and time in which the server actually starts the computation of a program
+      example: '2019-08-22 13:55'
+
+    JITStartDatetimeArray:
+      type: array
+      items:
+        $ref: '#/components/schemas/JITStartDatetime'
+      example: ['2019-08-22 13:55', '2019-08-22 21:55', '2019-08-23 18:55', '2019-08-24 17:30']
+
+    JITDeltaTime:
+      type: integer
+      description: Amount of minutes either late or early for a single program to be computed
+      example: 4
+
+    JITDeltaTimeArray:
+      type: array
+      items:
+        $ref: '#/components/schemas/JITDeltaTime'
+      example: [6, 0, 0, 0]
+
+    JITOutputData:
+      type: object
+      properties:
+        total_fee:
+          $ref: '#/components/schemas/JITTotalFee'
+        start_datetime:
+          $ref: '#/components/schemas/JITStartDatetimeArray'
+        delta_time:
+          $ref: '#/components/schemas/JITDeltaTimeArray'
+      required:
+        - total_fee
+        - start_datetime
+        - delta_time
+
+    JITOutput:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/JITOutputData'
+        meta:
+          $ref: '#/components/schemas/ProblemMeta'
+      required:
+        - data
+        - meta
+
+  responses:
+    # Errors
+
+    BadRequestError:
+      description: Bad Request Error, could not parse the input data of the current request
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                description: 'Error type indication'
+                example: 'Bad request'
+              description:
+                type: string
+                description: 'General description of the class of errors known as "Bad Request"'
+                example: 'The server isn''t able to parse the given input'
+              details:
+                type: string
+                description: 'Hint of which problem caused the error'
+                example: 'Expecting '','' delimiter'
+            required:
+            - error
+            - description
+            - details
+
+    UnprocessableEntityError:
+      description: Unprocessable Entity Error, the input data isn't semantically valid.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                description: 'Error type indication'
+                example: 'Unprocessable entity'
+              description:
+                type: string
+                description: 'General description of the class of errors known as "Unprocessable Entity"'
+                example: 'The server understands the structure of the given input, but its semantics is invalid'
+              details:
+                type: string
+                description: 'Hint of which problem caused the error'
+                example: 'The length of the `duration` and `expected_finish` lists must equal the value of `n_batches`'
+            required:
+            - error
+            - description
+            - details
